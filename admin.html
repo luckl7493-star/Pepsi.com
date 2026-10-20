@@ -65,6 +65,8 @@ $('go').onclick = async () => {
   const r = await secureLogin($('u').value.trim().toLowerCase(), $('p').value);
   if(r.err){ err(r.err); return; } start();
 };
-$('out').onclick = async () => { await sb.auth.signOut(); location.reload(); };
-sb.auth.getSession().then(({data}) => { if(data.session) start(); });
+function cleanSb(){ try{ sb.auth.signOut({scope:'local'}); }catch(e){} try{ Object.keys(localStorage).filter(k => k.startsWith('sb-')).forEach(k => localStorage.removeItem(k)); }catch(e){} }
+$('out').onclick = async () => { try{ await Promise.race([sb.auth.signOut(), new Promise(r => setTimeout(r, 2500))]); }catch(e){} cleanSb(); location.reload(); };
+sb.auth.onAuthStateChange(ev => { if(ev === 'SIGNED_OUT' && $('panel').style.display === 'block') location.reload(); });
+sb.auth.getSession().then(async ({data}) => { if(!data.session) return; const r = await sb.auth.getUser(); if(r.error || !r.data.user){ cleanSb(); return; } start(); });
 </script></body></html>

@@ -555,6 +555,9 @@ const SUPA_URL = 'https://ceakufmcdxaxrnfzglto.supabase.co', SUPA_KEY = 'eyJhbGc
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 let me = null;
 const CUR = 'nd', DETAIL = null, SALE_URL = '';
+function cleanSb(){ try{ sb.auth.signOut({scope:'local'}); }catch(e){} try{ Object.keys(localStorage).filter(k => k.startsWith('sb-')).forEach(k => localStorage.removeItem(k)); }catch(e){} }
+async function hardOut(){ try{ await Promise.race([sb.auth.signOut(), new Promise(r => setTimeout(r, 2500))]); }catch(e){} cleanSb(); location.reload(); }
+sb.auth.onAuthStateChange(ev => { if(ev === 'SIGNED_OUT' && me) location.reload(); });
 async function wlog(ev, detail){ if(!me) return; try{ await sb.from('login_logs').insert({user_id:me.id, uid:(me.email||'').split('@')[0], event:ev, detail:detail||null, ua:navigator.userAgent}); }catch(e){} }
 async function secureLogin(id, pw){
   const {data, error} = await sb.functions.invoke('login', {body:{uid:id, password:pw}});
@@ -584,13 +587,13 @@ function enter(user, ev){
   if(document.getElementById('lo')) return;
   const h = document.querySelector('header'), bs = 'float:right;margin-left:6px;padding:4px 10px;border:0;border-radius:6px;';
   h.insertAdjacentHTML('beforeend', ' <button id="lo" style="'+bs+'">Sign Out</button> <button id="cp" style="'+bs+'">Password badlein</button>');
-  document.getElementById('lo').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  document.getElementById('lo').onclick = hardOut;
   document.getElementById('cp').onclick = changePw;
   mkNav(CUR);
   sb.from('admins').select('user_id').maybeSingle().then(({data}) => { if(data) h.insertAdjacentHTML('beforeend', ' <a href="admin.html" style="'+bs+'background:#fde047;color:#1b2430;text-decoration:none;font-size:13px">Admin</a>'); });
 }
 document.querySelectorAll('.eye').forEach(b => b.onclick = () => { const i = document.getElementById(b.dataset.t); i.type = i.type==='password' ? 'text' : 'password'; });
-sb.auth.getSession().then(({data}) => { if(data.session) enter(data.session.user, 'open'); });
+sb.auth.getSession().then(async ({data}) => { if(!data.session) return; const r = await sb.auth.getUser(); if(r.error || !r.data.user){ cleanSb(); return; } enter(r.data.user, 'open'); });
 document.getElementById('gf').onsubmit = async e => {
   e.preventDefault(); const err = document.getElementById('gerr'); err.textContent = '';
   const id = document.getElementById('gu').value.trim().toLowerCase(), pw = document.getElementById('gp').value;
