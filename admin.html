@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>R369 Admin</title>
+<style>body{font-family:system-ui,sans-serif;margin:0;background:#fff;color:#1b2430}header{background:linear-gradient(90deg,#0ea5e9,#6366f1);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}main{padding:12px;max-width:1000px;margin:auto}.card{background:#fff;border:1px solid #d9dfe7;border-radius:10px;padding:12px;margin-bottom:12px}input,button,select{padding:8px;border:1px solid #d9dfe7;border-radius:8px;font-size:14px}button{background:#0b5ed7;color:#fff;border:0;cursor:pointer}button.s{background:#64748b}button.d{background:#b91c1c}.w{overflow-x:auto;margin-top:8px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #e5e9ef;padding:6px 8px;text-align:left;white-space:nowrap}th{background:#e2e8f0}.r{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}#err{color:#b91c1c;margin-top:6px;text-align:center}#lg{background:linear-gradient(160deg,#0ea5e9,#6366f1 60%,#a855f7);color:#fff;border:0;border-radius:20px;box-shadow:0 12px 32px rgba(99,102,241,.35);max-width:400px;margin:36px auto;text-align:center;padding:22px}#lg .r{justify-content:center}#lg a{color:#fff}#lg button#go{background:linear-gradient(135deg,#facc15,#f97316);font-weight:700}#lg input{border:0}.pw{position:relative;display:inline-block}.pw input{padding-right:40px}.eye{position:absolute;right:2px;top:2px;background:none;color:#334155;padding:6px 8px;font-size:16px}</style></head><body>
+<header><b>Admin</b><span id="hl" style="display:none;font-size:13px"><a href="index.html" style="color:#fff;margin-right:12px">ND Report</a><a href="kpi.html" style="color:#fff">KPI Report</a></span><button class="s" id="out" style="display:none">Sign Out</button></header>
+<main>
+<div class="card" id="lg"><svg width="64" height="64" viewBox="0 0 64 64" aria-label="logo" style="display:block;margin:0 auto"><defs><linearGradient id="lgx" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#facc15"/><stop offset="1" stop-color="#f97316"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#lgx)"/><path d="M13 45 L26 31 L35 38 L51 18" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="45" r="3.5" fill="#fff"/><circle cx="26" cy="31" r="3.5" fill="#fff"/><circle cx="35" cy="38" r="3.5" fill="#fff"/><circle cx="51" cy="18" r="4.5" fill="#fff"/><rect x="13" y="51" width="38" height="4" rx="2" fill="#fff" opacity=".65"/></svg><div style="font-weight:700;font-size:18px;margin:8px 0">Admin Login</div><div class="r"><input id="u" placeholder="Admin ID" autocapitalize="off"><span class="pw"><input id="p" type="password" placeholder="Password"><button type="button" class="eye" data-t="p" title="Password dekhein">👁</button></span><button id="go">Sign In</button></div><div class="r"><a href="#" id="fg">Admin password bhool gaye?</a></div></div>
+<div class="card" id="rc" style="display:none"><b>Admin password recover</b><div class="r"><input id="ru" placeholder="Admin ID" autocapitalize="off"><input id="rk" placeholder="Recovery code" autocapitalize="characters"><span class="pw"><input id="rp" type="password" placeholder="Naya password"><button type="button" class="eye" data-t="rp" title="Password dekhein">👁</button></span><button id="rgo">Reset</button></div></div>
+<div id="err"></div>
+<div id="panel" style="display:none">
+<div class="card"><b>Naya user</b><div class="r"><input id="nu" placeholder="ID" autocapitalize="off"><input id="np" placeholder="Password (kam az kam 6)"><button id="add">Banao</button></div></div>
+<div class="card"><b>Users</b><div class="w"><table id="ut"></table></div></div>
+<div class="card"><b>Login / Use log</b><div class="r"><input id="fu" placeholder="ID filter"><select id="fe"><option value="">Sab</option><option>login</option><option>open</option><option>export</option><option>password</option></select><button id="rl">Refresh</button></div><div class="w"><table id="lt"></table></div></div>
+</div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const SUPA_URL = 'https://ceakufmcdxaxrnfzglto.supabase.co', SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlYWt1Zm1jZHhheHJuZnpnbHRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0Mzg5MjUsImV4cCI6MjEwODAxNDkyNX0.pSyLSnWyWolPMG8hSq3brpicb5fboUJ1MdnWK-3MzrI';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY), $ = id => document.getElementById(id);
+const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = d => d ? new Date(d).toLocaleString() : '-';
+function err(m){ $('err').textContent = m || ''; }
+async function secureLogin(id, pw){
+  const {data, error} = await sb.functions.invoke('login', {body:{uid:id, password:pw}});
+  if(error){ let b = {}; try{ b = await error.context.json(); }catch(e){}
+    return {err: b.error==='locked' ? 'Account lock ho gaya (7 ghalat koshishen). Admin se rabta karein.' : 'ID ya password ghalat hai'+(b.left!=null ? ' (Remaining attempts: '+b.left+')' : '')}; }
+  await sb.auth.setSession({access_token:data.session.access_token, refresh_token:data.session.refresh_token});
+  return {user:data.session.user};
+}
+async function call(body){
+  const {data, error} = await sb.functions.invoke('admin-users', {body});
+  if(error){ let m = error.message; try{ m = (await error.context.json()).error || m; }catch(e){} err(m); return null; }
+  err(); return data;
+}
+async function users(){
+  const d = await call({action:'list'}); if(!d) return;
+  $('ut').innerHTML = '<tr><th>ID</th><th>Last login</th><th>Status</th><th></th></tr>' + d.users.map(u => '<tr><td>'+esc(u.uid)+'</td><td>'+fmt(u.last)+'</td><td>'+(u.banned?'Band':(u.locked?'Locked (7 ghalat)':'Active'))+'</td><td class="r">'
+    + (u.locked?'<button data-a="unlock" data-i="'+u.id+'" data-u="'+esc(u.uid)+'">Unlock</button>':'') + '<button data-a="reset" data-i="'+u.id+'" data-u="'+esc(u.uid)+'">Password reset</button><button class="s" data-a="'+(u.banned?'enable':'disable')+'" data-i="'+u.id+'">'+(u.banned?'Chalu':'Band')+'</button><button class="d" data-a="delete" data-i="'+u.id+'">Delete</button></td></tr>').join('');
+}
+$('ut').onclick = async e => {
+  const b = e.target.closest('button'); if(!b) return; const a = b.dataset.a, id = b.dataset.i; let pw;
+  if(a==='reset'){ pw = prompt('Naya password (kam az kam 6):'); if(!pw) return; }
+  if(a==='delete' && !confirm('Is user ko delete karein?')) return;
+  if(await call({action:a, id, uid:b.dataset.u, password:pw})) users();
+};
+$('add').onclick = async () => { if(await call({action:'create', uid:$('nu').value, password:$('np').value})){ $('nu').value = $('np').value = ''; users(); } };
+async function logs(){
+  let q = sb.from('login_logs').select('*').order('created_at',{ascending:false}).limit(300);
+  if($('fu').value.trim()) q = q.ilike('uid', '%'+$('fu').value.trim()+'%');
+  if($('fe').value) q = q.eq('event', $('fe').value);
+  const {data, error} = await q; if(error){ err(error.message); return; }
+  $('lt').innerHTML = '<tr><th>Time</th><th>ID</th><th>Event</th><th>Detail</th><th>IP</th><th>Device</th></tr>' + data.map(r => '<tr><td>'+fmt(r.created_at)+'</td><td>'+esc(r.uid)+'</td><td>'+esc(r.event)+'</td><td>'+esc(r.detail)+'</td><td>'+esc(r.ip)+'</td><td>'+esc((r.ua||'').slice(0,60))+'</td></tr>').join('');
+}
+$('rl').onclick = logs;
+document.querySelectorAll('.eye').forEach(b => b.onclick = () => { const i = $(b.dataset.t); i.type = i.type==='password' ? 'text' : 'password'; });
+$('fg').onclick = e => { e.preventDefault(); $('rc').style.display = 'block'; };
+$('rgo').onclick = async () => {
+  const {error} = await sb.functions.invoke('admin-recover', {body:{uid:$('ru').value, code:$('rk').value, password:$('rp').value}});
+  if(error){ let m = 'Recover nahi ho saka'; try{ m = (await error.context.json()).error || m; }catch(e){} err(m); return; }
+  err(''); $('rc').style.display = 'none'; alert('Password badal gaya. Ab naye password se login karein.');
+};
+async function start(){
+  const {data} = await sb.from('admins').select('user_id').maybeSingle();
+  if(!data){ err('Yeh ID admin nahi hai'); await sb.auth.signOut(); return; }
+  $('lg').style.display = 'none'; $('panel').style.display = 'block'; $('out').style.display = ''; $('hl').style.display = ''; err(); users(); logs();
+}
+$('go').onclick = async () => {
+  const r = await secureLogin($('u').value.trim().toLowerCase(), $('p').value);
+  if(r.err){ err(r.err); return; } start();
+};
+$('out').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+sb.auth.getSession().then(({data}) => { if(data.session) start(); });
+</script></body></html>

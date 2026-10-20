@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily KPI Track Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#fff;--panel:#F5F7F9;--line:#DCE1E6;--ink:#14181A;--muted:#68716C;--a:#0B5CAD;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14181B;--panel:#1D2226;--line:#2C343A;--ink:#F1F4F6;--muted:#9AA5AD;--a:#4C9BEA;}}
+:root[data-theme="dark"]{--bg:#14181B;--panel:#1D2226;--line:#2C343A;--ink:#F1F4F6;--muted:#9AA5AD;--a:#4C9BEA;}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,Segoe UI,Arial,sans-serif}
+header{background:linear-gradient(90deg,#001F4D,#0B5CAD);color:#fff;padding:18px 22px}
+header h1{margin:0;font-size:20px}header p{margin:4px 0 0;font-size:12px;opacity:.85}
+.wrap{max-width:1000px;margin:0 auto;padding:18px}
+.drop{border:2px dashed var(--a);border-radius:12px;padding:28px;text-align:center;background:var(--panel);cursor:pointer}
+.drop b{font-size:15px}.drop small{display:block;color:var(--muted);margin-top:6px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.btn{border:none;border-radius:8px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;background:var(--a);color:#fff}
+.btn.alt{background:var(--bg);color:var(--a);border:1px solid var(--a)}
+label.chk{font-size:13px;display:flex;gap:6px;align-items:center}
+input[type=text]{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px;min-width:260px}
+select{padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;font-size:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;overflow-x:auto}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;white-space:nowrap}
+th{background:#0070C0;color:#fff}
+td.bad{background:#D32F2F;color:#fff;font-weight:700}
+input[type=number]{width:72px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:13px}
+.tg{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+td.n{text-align:center}tr.tot td{font-weight:700;background:var(--panel)}
+#msg{font-size:13px;color:var(--a);font-weight:600;min-height:18px}
+#imgBox img{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#fff}
+.hid{display:none}
+@media (max-width:640px){.wrap{padding:12px}.bar{gap:8px}.btn{flex:1 1 46%;padding:12px 8px}input[type=text]{min-width:0;width:100%}.tg{flex:1 1 100%}.card{padding:10px}header h1{font-size:18px}}
+</style>
+</head>
+<body>
+<header><h1>Daily KPI — Track Report</h1><p>Upload the Daily KPI Excel file of any agency. The Track report is built from its KPI sheet, and you can make an image or Excel from it.</p></header>
+<div class="wrap">
+  <div class="drop" id="drop"><b>📂 Click here or drop your Daily KPI Excel (any agency)</b><small>The file stays in your browser and is not uploaded anywhere.</small></div>
+  <input type="file" id="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hid">
+  <div id="msg"></div>
+  <div id="app" class="hid">
+    <div class="bar">
+      <input type="text" id="title" value="PSR Daily KPI Report Mehar Munir Brother">
+      <label class="chk"><input type="checkbox" id="auto" checked> Auto-generate image on upload</label>
+    </div>
+    <div class="bar">
+      <label class="tg">SDM <select id="sdmF"><option>All</option></select></label>
+      <datalist id="sdmList"></datalist>
+      <label class="tg">Red if Call Completion below <input type="number" id="tcc" value="100">%</label>
+      <label class="tg">Strike Rate below <input type="number" id="tsr" value="75">%</label>
+      <label class="tg">Avg SKU / Order below <input type="number" id="tsku" value="6" step="0.1"></label>
+    </div>
+    <div class="card"><h2>Track report</h2><table id="t1"></table></div>
+    <div class="card"><h2>SDM wise</h2><table id="t2"></table></div>
+    <div class="bar">
+      <button class="btn" id="mkImg">Generate images</button>
+      <button class="btn alt" id="dlP">Download PSR image</button>
+      <button class="btn alt" id="dlS">Download SDM image</button>
+      <button class="btn alt" id="cpP">Copy PSR image</button>
+      <button class="btn alt" id="cpS">Copy SDM image</button>
+      <button class="btn" id="shP">Share PSR image</button>
+      <button class="btn" id="shS">Share SDM image</button>
+      <button class="btn alt" id="dlXls">Download Track Excel</button>
+    </div>
+    <div class="card" id="imgBox"><h2>Images</h2><div id="imgHold" style="color:var(--muted);font-size:13px">Press "Generate images".</div></div>
+    <div class="card"><h2>PSRs in report — type the SDM name for each PSR (saved in this browser)</h2><table id="ros"></table></div>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const ORDER=[1691,1694,1693,1696,1695,1983,1697];
+const SDM0={1694:'Aqeel Ahmad',1693:'Aqeel Ahmad',1696:'Aqeel Ahmad',1695:'Aqeel Ahmad',1691:'Muhammad Hassan',1983:'Muhammad Hassan',1697:'Muhammad Hassan'};
+let SDMS=[];
+let SAVED={};try{SAVED=JSON.parse(localStorage.getItem('sdmMap')||'{}');}catch(e){}
+const saveMap=()=>{try{R.forEach(r=>{if(r.sdm==='—')delete SAVED[r.id];else SAVED[r.id]=r.sdm;});localStorage.setItem('sdmMap',JSON.stringify(SAVED));}catch(e){}};
+const refreshSdms=()=>{SDMS=[...new Set(R.map(r=>r.sdm).filter(s=>s&&s!=='—'))].sort();};
+let R=[],dateStr='',canvas=null;
+const T={cc:100,sr:75,sku:6};
+const bad=(k,v)=>k==='sku'?Math.round(v*10)/10<T.sku:Math.round(v*10000)/100<T[k];
+const kc=(k,v)=>'n'+(bad(k,v)?' bad':'');
+const pct=v=>(v*100).toFixed(2)+'%', num=v=>Number(v).toFixed(1);
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+
+$('drop').onclick=()=>$('file').click();
+$('drop').ondragover=e=>e.preventDefault();
+$('drop').ondrop=e=>{e.preventDefault();if(e.dataTransfer.files[0])load(e.dataTransfer.files[0]);};
+$('file').onchange=e=>{if(e.target.files[0])load(e.target.files[0]);};
+
+async function load(f){
+  $('msg').textContent='Reading file…';
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    let rows=null;
+    for(const n of ['KPI',...wb.SheetNames]){
+      const ws=wb.Sheets[n];if(!ws)continue;
+      const a=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      const hi=a.findIndex(r=>r.some(c=>String(c).trim()==='PJP ID'));
+      if(hi>=0){rows={a,hi};break;}
+    }
+    if(!rows)throw new Error('KPI sheet (PJP ID header) not found');
+    const {a,hi}=rows,h=a[hi].map(c=>String(c).trim());
+    const ix=k=>h.indexOf(k);
+    const c={id:ix('PJP ID'),nm:ix('PJP Name'),psr:ix('PSR'),cc:ix('CALL COMPLETION %'),sr:ix('STRIKE RATE'),sku:ix('AVG. SKU / ORDER')};
+    if(Object.values(c).some(v=>v<0))throw new Error('Required columns missing');
+    const got=[];
+    for(let i=hi+1;i<a.length;i++){
+      const r=a[i],id=Number(r[c.id]);
+      if(!id||!String(r[c.psr]).trim()||String(r[c.psr]).trim()==='Total')continue;
+      got.push({id,name:String(r[c.nm]).trim(),psr:String(r[c.psr]).trim(),cc:+r[c.cc]||0,sr:+r[c.sr]||0,sku:+r[c.sku]||0,sdm:SAVED[id]||SDM0[id]||'—',inc:!/competition/i.test(String(r[c.nm]))});
+    }
+    got.sort((x,y)=>{const p=ORDER.indexOf(x.id),q=ORDER.indexOf(y.id);return (p<0?99:p)-(q<0?99:q);});
+    R=got;refreshSdms();
+    let ag='';
+    for(const r of a.slice(0,hi)){for(const v of r){const s=String(v);if(s.includes(' | ')){ag=s.split(' | ')[0].replace(/^\s*\d+\s*-\s*/,'').trim();break;}}if(ag)break;}
+    if(ag)$('title').value='PSR Daily KPI Report '+ag.toLowerCase().replace(/\b\w/g,m=>m.toUpperCase());
+    dateStr='';
+    for(const r of a.slice(0,4)){const m=String(r[0]).match(/Period:\s*([\d/]+)\s*-\s*([\d/]+)/);if(m){dateStr=m[2];break;}}
+    if(!dateStr){const d=new Date();dateStr=[d.getDate(),d.getMonth()+1,d.getFullYear()].map(x=>String(x).padStart(2,'0')).join('/');}
+    $('app').classList.remove('hid');
+    $('msg').textContent='Loaded '+f.name+' — '+R.length+' PSRs, date '+dateStr;
+    render();
+    if($('auto').checked)makeImg();
+  }catch(e){$('msg').textContent='Error: '+e.message;}
+}
+
+function groups(){
+  refreshSdms();
+  const f=$('sdmF').value;
+  const inc=R.filter(r=>r.inc&&(f==='All'||r.sdm===f));
+  const sd=SDMS.map(s=>{const g=inc.filter(r=>r.sdm===s);return{name:s,cc:avg(g.map(r=>r.cc)),sr:avg(g.map(r=>r.sr)),sku:avg(g.map(r=>r.sku)),n:g.length};}).filter(s=>s.n);
+  return{inc,tot:{cc:avg(inc.map(r=>r.cc)),sr:avg(inc.map(r=>r.sr)),sku:avg(inc.map(r=>r.sku))},sd};
+}
+function cell(tr,v,cls,tag){const e=document.createElement(tag||'td');e.textContent=v;if(cls)e.className=cls;tr.appendChild(e);return e;}
+function render(){
+  refreshSdms();
+  const sf=$('sdmF'),cur=sf.value;sf.innerHTML='';
+  ['All',...SDMS].forEach(s=>{const o=document.createElement('option');o.value=o.textContent=s;sf.appendChild(o);});
+  sf.value=(cur==='All'||SDMS.includes(cur))?cur:'All';
+  const dl2=$('sdmList');dl2.innerHTML='';SDMS.forEach(s=>{const o=document.createElement('option');o.value=s;dl2.appendChild(o);});
+  const {inc,tot,sd}=groups();
+  const t1=$('t1');t1.innerHTML='';
+  let tr=document.createElement('tr');['PJP ID','PJP Name','PSR','CALL COMPLETION %','STRIKE RATE','AVG. SKU / ORDER'].forEach(x=>cell(tr,x,'','th'));t1.appendChild(tr);
+  inc.forEach(r=>{tr=document.createElement('tr');cell(tr,r.id);cell(tr,r.name);cell(tr,r.psr);cell(tr,pct(r.cc),kc('cc',r.cc));cell(tr,pct(r.sr),kc('sr',r.sr));cell(tr,num(r.sku),kc('sku',r.sku));t1.appendChild(tr);});
+  tr=document.createElement('tr');tr.className='tot';cell(tr,'Total');cell(tr,'');cell(tr,'');cell(tr,pct(tot.cc),kc('cc',tot.cc));cell(tr,pct(tot.sr),kc('sr',tot.sr));cell(tr,num(tot.sku),kc('sku',tot.sku));t1.appendChild(tr);
+  const t2=$('t2');t2.innerHTML='';
+  tr=document.createElement('tr');['SDM Name','CALL COMPLETION %','STRIKE RATE','AVG. SKU / ORDER'].forEach(x=>cell(tr,x,'','th'));t2.appendChild(tr);
+  sd.forEach(s=>{tr=document.createElement('tr');cell(tr,s.name);cell(tr,pct(s.cc),kc('cc',s.cc));cell(tr,pct(s.sr),kc('sr',s.sr));cell(tr,num(s.sku),kc('sku',s.sku));t2.appendChild(tr);});
+  const ro=$('ros');ro.innerHTML='';
+  tr=document.createElement('tr');['Include','PSR','PJP Name','SDM'].forEach(x=>cell(tr,x,'','th'));ro.appendChild(tr);
+  R.forEach(r=>{
+    tr=document.createElement('tr');
+    const c1=document.createElement('td'),cb=document.createElement('input');cb.type='checkbox';cb.checked=r.inc;cb.onchange=()=>{r.inc=cb.checked;render();};c1.appendChild(cb);tr.appendChild(c1);
+    cell(tr,r.psr);cell(tr,r.name);
+    const c4=document.createElement('td'),inp=document.createElement('input');inp.type='text';inp.setAttribute('list','sdmList');inp.placeholder='SDM name';inp.style.minWidth='170px';inp.value=r.sdm==='—'?'':r.sdm;
+    inp.onchange=()=>{r.sdm=inp.value.trim()||'—';saveMap();render();};c4.appendChild(inp);tr.appendChild(c4);ro.appendChild(tr);
+  });
+}
+
+function draw(kind){
+  const {inc,tot,sd}=groups(),S=2,W=960,RH=34,P=20;
+  const cw=[80,160,240,150,130,150];
+  const HB=72,FB=0,H=HB+22+RH*(kind==='psr'?inc.length+2:sd.length+1)+52+FB;
+  const cv=document.createElement('canvas');cv.width=W*S;cv.height=H*S;
+  const x=cv.getContext('2d');x.scale(S,S);
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);
+  x.textBaseline='middle';
+  const g=x.createLinearGradient(0,0,W,0);g.addColorStop(0,'#00133A');g.addColorStop(1,'#0B66B8');
+  x.fillStyle=g;x.fillRect(0,0,W,HB);
+  x.fillStyle='#fff';x.font='bold 24px Arial';x.textAlign='left';x.fillText($('title').value,P,HB/2-9,W-190);
+  x.font='14px Arial';x.fillText(kind==='psr'?'PSR wise report':'SDM wise report',P,HB/2+17);
+  x.font='bold 18px Arial';x.textAlign='right';x.fillText(dateStr,W-P,HB/2);
+  let y=HB+22;
+  const row=(vals,opt)=>{
+    let cx=P;
+    vals.forEach((v,i)=>{
+      const w=opt.span&&i===0?cw[0]+cw[1]+cw[2]:(opt.span?cw[i+2]:cw[i]);
+      const fl=opt.flags&&opt.flags[i];
+      x.fillStyle=opt.head?'#0070C0':(fl?'#D32F2F':'#fff');x.fillRect(cx,y,w,RH);
+      x.strokeStyle='#8A8A8A';x.lineWidth=1;x.strokeRect(cx,y,w,RH);
+      x.fillStyle=(opt.head||fl)?'#fff':'#000';x.font=(opt.head||opt.bold||fl?'bold ':'')+'13px Arial';
+      const left=opt.left&&opt.left(i);
+      x.textAlign=left?'left':'center';
+      x.fillText(String(v),left?cx+8:cx+w/2,y+RH/2+1,w-12);
+      cx+=w;
+    });
+    y+=RH;
+  };
+  const L2=i=>i<3;
+  if(kind==='psr'){
+    row(['PJP ID','PJP Name','PSR','CALL COMPLETION %','STRIKE RATE','AVG. SKU / ORDER'],{head:1,left:L2});
+    inc.forEach(r=>row([r.id,r.name,r.psr,pct(r.cc),pct(r.sr),num(r.sku)],{left:L2,flags:[0,0,0,bad('cc',r.cc),bad('sr',r.sr),bad('sku',r.sku)]}));
+    row(['Total','','',pct(tot.cc),pct(tot.sr),num(tot.sku)],{bold:1,left:L2,flags:[0,0,0,bad('cc',tot.cc),bad('sr',tot.sr),bad('sku',tot.sku)]});
+  }else{
+    row(['SDM Name','CALL COMPLETION %','STRIKE RATE','AVG. SKU / ORDER'],{head:1,span:1,left:i=>i===0});
+    sd.forEach(s=>row([s.name,pct(s.cc),pct(s.sr),num(s.sku)],{span:1,left:i=>i===0,flags:[0,bad('cc',s.cc),bad('sr',s.sr),bad('sku',s.sku)]}));
+  }
+  x.fillStyle='#D32F2F';x.fillRect(P,y+16,14,14);
+  x.fillStyle='#333';x.font='12px Arial';x.textAlign='left';
+  x.fillText('Below target:  Call Completion < '+T.cc+'%   |   Strike Rate < '+T.sr+'%   |   Avg SKU / Order < '+Number(T.sku).toFixed(1),P+22,y+23);
+  return cv;
+}
+const cvs={};
+function makeImg(){
+  if(!R.length)return;
+  const hold=$('imgHold');hold.innerHTML='';delete cvs.psr;delete cvs.sdm;
+  [['psr','PSR image'],['sdm','SDM image']].filter(([k])=>k==='psr'||groups().sd.length).forEach(([k,lab])=>{
+    cvs[k]=draw(k);canvas=cvs[k];
+    const t=document.createElement('div');t.textContent=lab;t.style.cssText='font-weight:700;font-size:12px;margin:8px 0 4px';
+    const im=new Image();im.src=cvs[k].toDataURL('image/png');im.alt=lab;
+    hold.appendChild(t);hold.appendChild(im);
+  });
+  const hint=document.createElement('div');hint.textContent='On mobile: press and hold an image to save or share it.';hint.style.cssText='font-size:12px;color:var(--muted);margin-top:8px';hold.appendChild(hint);
+}
+$('mkImg').onclick=makeImg;
+['title'].forEach(i=>$(i).oninput=()=>{if(canvas)makeImg();});
+['sdmF','tcc','tsr','tsku'].forEach(i=>$(i).onchange=()=>{T.cc=+$('tcc').value;T.sr=+$('tsr').value;T.sku=+$('tsku').value;render();if(canvas)makeImg();});
+async function save(name,data){
+  const d=await claude.use('downloads');
+  if(!d){$('msg').textContent='Download is not available here. Right-click or long-press the image to save it.';return;}
+  try{await d.save({filename:name,data});}catch(e){if(e.code!=='declined')$('msg').textContent='Could not save: '+(e.message||e.code);}
+}
+const fn=k=>(k==='psr'?'PSR_':'SDM_')+'Daily_KPI_'+dateStr.replace(/\//g,'-')+'.png';
+function dl(k){if(!cvs[k])makeImg();if(!cvs[k]){$('msg').textContent='Type SDM names in the PSR list below first.';return;}cvs[k].toBlob(b=>save(fn(k),b),'image/png');}
+function cp(k){if(!cvs[k])makeImg();if(!cvs[k]){$('msg').textContent='Type SDM names in the PSR list below first.';return;}cvs[k].toBlob(async b=>{try{await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);$('msg').textContent=k.toUpperCase()+' image copied.';}catch(e){$('msg').textContent='Copy blocked here. Use the download button.';}});}
+$('dlP').onclick=()=>dl('psr');$('dlS').onclick=()=>dl('sdm');
+$('cpP').onclick=()=>cp('psr');$('cpS').onclick=()=>cp('sdm');
+function sh(k){
+  if(!cvs[k])makeImg();
+  if(!cvs[k]){$('msg').textContent='Type SDM names in the PSR list below first.';return;}
+  cvs[k].toBlob(async b=>{
+    const f=new File([b],fn(k),{type:'image/png'});
+    try{
+      if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:$('title').value});
+      else $('msg').textContent='Sharing is not supported here. Press and hold the image to save it.';
+    }catch(e){if(e.name!=='AbortError')$('msg').textContent='Share was blocked. Press and hold the image to save it.';}
+  },'image/png');
+}
+$('shP').onclick=()=>sh('psr');$('shS').onclick=()=>sh('sdm');
+if(!(navigator.share&&navigator.canShare)){$('shP').classList.add('hid');$('shS').classList.add('hid');}
+$('dlXls').onclick=()=>{
+  const {inc,tot,sd}=groups();
+  const aoa=[[$('title').value,'','','','',dateStr],['PJP ID','PJP Name','PSR','CALL COMPLETION %','STRIKE RATE','AVG. SKU / ORDER']];
+  inc.forEach(r=>aoa.push([r.id,r.name,r.psr,r.cc,r.sr,+r.sku.toFixed(1)]));
+  aoa.push(['Total','','',tot.cc,tot.sr,+tot.sku.toFixed(1)],[],[$('title').value,'','','','',dateStr],['SDM Name','','','CALL COMPLETION %','STRIKE RATE','AVG. SKU / ORDER']);
+  sd.forEach(s=>aoa.push([s.name,'','',s.cc,s.sr,+s.sku.toFixed(1)]));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  Object.keys(ws).forEach(k=>{if(k[0]==='!')return;const c=XLSX.utils.decode_cell(k);if((c.c===3||c.c===4)&&typeof ws[k].v==='number')ws[k].z='0.00%';if(c.c===5&&typeof ws[k].v==='number')ws[k].z='0.0';});
+  ws['!cols']=[{wch:10},{wch:18},{wch:28},{wch:20},{wch:14},{wch:18}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Track');
+  const out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  save('Track_'+dateStr.replace(/\//g,'-')+'.xlsx',new Blob([out]));
+};
+</script>
+<style>#gate{position:fixed;inset:0;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center}#gate form{background:linear-gradient(160deg,#0ea5e9,#6366f1 60%,#a855f7);color:#fff;padding:26px 22px;border-radius:20px;width:290px;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 32px rgba(99,102,241,.35)}#gate input{padding:11px;border:0;border-radius:10px;font-size:15px;background:#fff;color:#1b2430}#gate button{padding:11px;border:0;border-radius:10px;background:linear-gradient(135deg,#facc15,#f97316);color:#fff;font-size:15px;font-weight:700}#gerr{color:#fee2e2;font-size:13px;min-height:16px;text-align:center}#gate .eye{position:absolute;right:4px;top:4px;background:none;color:#475569;padding:6px 8px;font-size:16px}</style>
+<div id="gate"><form id="gf"><svg width="64" height="64" viewBox="0 0 64 64" aria-label="logo" style="display:block;margin:0 auto"><defs><linearGradient id="lgx" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#facc15"/><stop offset="1" stop-color="#f97316"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#lgx)"/><path d="M13 45 L26 31 L35 38 L51 18" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="45" r="3.5" fill="#fff"/><circle cx="26" cy="31" r="3.5" fill="#fff"/><circle cx="35" cy="38" r="3.5" fill="#fff"/><circle cx="51" cy="18" r="4.5" fill="#fff"/><rect x="13" y="51" width="38" height="4" rx="2" fill="#fff" opacity=".65"/></svg><b style="font-size:17px;text-align:center;line-height:1.3;color:#fff">Daily KPI Track Report</b><input id="gu" placeholder="ID" autocapitalize="off" autocomplete="username"><div style="position:relative"><input id="gp" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding-right:44px"><button type="button" class="eye" data-t="gp" title="Password dekhein">👁</button></div><div id="gerr"></div><button>Sign In</button></form></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const SUPA_URL = 'https://ceakufmcdxaxrnfzglto.supabase.co', SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlYWt1Zm1jZHhheHJuZnpnbHRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0Mzg5MjUsImV4cCI6MjEwODAxNDkyNX0.pSyLSnWyWolPMG8hSq3brpicb5fboUJ1MdnWK-3MzrI';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+let me = null;
+const CUR = 'kpi', DETAIL = 'KPI', SALE_URL = '';
+async function wlog(ev, detail){ if(!me) return; try{ await sb.from('login_logs').insert({user_id:me.id, uid:(me.email||'').split('@')[0], event:ev, detail:detail||null, ua:navigator.userAgent}); }catch(e){} }
+async function secureLogin(id, pw){
+  const {data, error} = await sb.functions.invoke('login', {body:{uid:id, password:pw}});
+  if(error){ let b = {}; try{ b = await error.context.json(); }catch(e){}
+    return {err: b.error==='locked' ? 'Account lock ho gaya (7 ghalat koshishen). Admin se rabta karein.' : 'ID ya password ghalat hai'+(b.left!=null ? ' (Remaining attempts: '+b.left+')' : '')}; }
+  await sb.auth.setSession({access_token:data.session.access_token, refresh_token:data.session.refresh_token});
+  return {user:data.session.user};
+}
+async function changePw(){
+  const old = prompt('Purana password:'); if(!old) return;
+  const r = await secureLogin((me.email||'').split('@')[0], old); if(r.err){ alert(r.err); return; }
+  const nw = prompt('Naya password (kam az kam 6 characters):'); if(!nw) return;
+  if(nw.length < 6){ alert('Password kam az kam 6 characters ka rakhein'); return; }
+  const {error} = await sb.auth.updateUser({password: nw});
+  if(error){ alert(error.message); return; } wlog('password'); alert('Password badal gaya');
+}
+function mkNav(cur){
+  const t = [['nd','ND Report','index.html'],['kpi','KPI Report','kpi.html'],['sale','Sale Report',SALE_URL]];
+  const n = document.createElement('div'); n.id = 'rnav';
+  n.style.cssText = 'display:flex;gap:6px;padding:8px 12px;background:#fff;border-bottom:1px solid #e5e9ef;overflow-x:auto';
+  const st = 'padding:7px 14px;border-radius:18px;font-size:14px;text-decoration:none;white-space:nowrap;';
+  n.innerHTML = t.map(([k,l,u]) => u ? '<a href="'+u+'" style="'+st+(k===cur?'background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff':'background:#eef2f7;color:#1b2430')+'">'+l+'</a>' : '<span style="'+st+'background:#f3f4f6;color:#9ca3af">'+l+' (jald)</span>').join('');
+  document.querySelector('header').insertAdjacentElement('afterend', n);
+}
+function enter(user, ev){
+  me = user; document.getElementById('gate').style.display = 'none'; wlog(ev, DETAIL);
+  if(document.getElementById('lo')) return;
+  const h = document.querySelector('header'), bs = 'float:right;margin-left:6px;padding:4px 10px;border:0;border-radius:6px;';
+  h.insertAdjacentHTML('beforeend', ' <button id="lo" style="'+bs+'">Sign Out</button> <button id="cp" style="'+bs+'">Password badlein</button>');
+  document.getElementById('lo').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  document.getElementById('cp').onclick = changePw;
+  mkNav(CUR);
+  sb.from('admins').select('user_id').maybeSingle().then(({data}) => { if(data) h.insertAdjacentHTML('beforeend', ' <a href="admin.html" style="'+bs+'background:#fde047;color:#1b2430;text-decoration:none;font-size:13px">Admin</a>'); });
+}
+document.querySelectorAll('.eye').forEach(b => b.onclick = () => { const i = document.getElementById(b.dataset.t); i.type = i.type==='password' ? 'text' : 'password'; });
+sb.auth.getSession().then(({data}) => { if(data.session) enter(data.session.user, 'open'); });
+document.getElementById('gf').onsubmit = async e => {
+  e.preventDefault(); const err = document.getElementById('gerr'); err.textContent = '';
+  const id = document.getElementById('gu').value.trim().toLowerCase(), pw = document.getElementById('gp').value;
+  const r = await secureLogin(id, pw);
+  if(r.err){ err.textContent = r.err; return; }
+  enter(r.user, 'login');
+};
+</script>
+</body>
+</html>
